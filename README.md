@@ -132,6 +132,16 @@ $$
 The scheme is second-order accurate in space and, away from the initial-layer
 approximation, second-order accurate in time.
 
+## Dependencies
+
+- C++17 compiler and CMake 3.20 or newer — system tools.
+- SDL2 — system development package.
+- [nlohmann/json](https://github.com/nlohmann/json) — Git submodule.
+
+```sh
+git submodule update --init
+```
+
 ## Build
 
 ```sh
@@ -156,49 +166,13 @@ size (`width`, `height`), run time (`duration`), material properties
 the initial disturbance amplitude (`initial_displacement`), and uniform viscous
 damping in inverse seconds (`damping`). Missing fields
 retain their built-in defaults; unknown or duplicate fields are rejected. CMake
-copies this file next to the executables during configuration. JSON parsing is
-provided by the pinned [`nlohmann/json`](https://github.com/nlohmann/json)
-Git submodule. Clone the project with `git clone --recurse-submodules`, or
-initialize dependencies in an existing clone with:
+copies this file next to the executables.
 
-```sh
-git submodule update --init --recursive
-```
+- `elastic-wave` runs the simulation in the console without graphics.
+- `elastic-wave-visualizer` opens a window and animates the wave field.
+  Left-click to add a local disturbance.
 
-Run `build/elastic-wave` (or `build/Debug/elastic-wave.exe` with a multi-config
-generator) from a directory containing `environment.json`.
-
-The build produces two applications on Windows, Linux, and macOS:
-
-- `elastic-wave.exe` runs the simulation in the console without graphics.
-- `elastic-wave-visualizer.exe` opens a window and animates the wave field.
-  It runs until the window is closed; left-click inside the window to add a
-  smooth local displacement at that point.
-
-The visualizer uses the system SDL2 package for cross-platform window, input,
-and rendering support. Install its development package before configuring:
-
-```sh
-# Ubuntu/Debian
-sudo apt install libsdl2-dev
-
-# macOS with Homebrew
-brew install sdl2
-```
-
-For MSYS2/MinGW on Windows, install SDL2 and build from PowerShell with:
-
-```powershell
-C:\msys64\usr\bin\pacman.exe -S mingw-w64-x86_64-SDL2
-$env:Path = "C:\msys64\mingw64\bin;$env:Path"
-cmake -S . -B build-mingw -G "MinGW Makefiles"
-cmake --build build-mingw
-.\build-mingw\elastic-wave-visualizer.exe
-```
-
-On Linux or macOS, use the same CMake commands and run
-`./build/elastic-wave-visualizer`. Both executables accept an optional path to
-the configuration file as their first argument:
+Run either program with an optional configuration path:
 
 ```sh
 ./build/elastic-wave environment.json
