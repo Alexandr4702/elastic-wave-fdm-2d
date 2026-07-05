@@ -1,0 +1,15 @@
+/build/
+/build-*/
+/cmake-build-*/
+/Debug/
+/.cache/
+.vscode/
+.idea/
+.project
+.cproject
+.settings/
+*.user
+*.d
+*.o
+*.obj
+*.exe
