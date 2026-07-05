@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <functional>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace elastic_wave {
@@ -17,7 +19,11 @@ struct Configuration {
     double dy = 0.0005;
     double dt = 0.0002;
     double initial_displacement = 0.02;
+    double damping = 0.0;
 };
+
+Configuration configuration_from_json(std::string_view json);
+Configuration load_configuration(const std::string& path);
 
 class Field {
 public:
@@ -43,11 +49,17 @@ struct StateView {
 };
 
 using Observer = std::function<void(const StateView&)>;
+using Interactor = std::function<void(Field& current_horizontal,
+                                      Field& previous_horizontal,
+                                      Field& current_vertical,
+                                      Field& previous_vertical)>;
+using RunCondition = std::function<bool()>;
 
 class Simulation {
 public:
     explicit Simulation(Configuration configuration);
-    void run(const Observer& observer = {});
+    void run(const Observer& observer = {}, const Interactor& interactor = {},
+             const RunCondition& continue_running = {});
     const Configuration& configuration() const noexcept;
     std::size_t columns() const noexcept;
     std::size_t rows() const noexcept;
@@ -61,4 +73,3 @@ private:
 };
 
 } // namespace elastic_wave
-

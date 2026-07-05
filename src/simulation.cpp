@@ -71,9 +71,13 @@ Simulation::Simulation(Configuration configuration)
         configuration_.poisson_ratio >= 0.5) {
         throw std::invalid_argument("Poisson ratio must be between -1 and 0.5");
     }
+    if (!std::isfinite(configuration_.damping) || configuration_.damping < 0.0) {
+        throw std::invalid_argument("damping must be finite and non-negative");
+    }
 }
 
-void Simulation::run(const Observer& observer) {
+void Simulation::run(const Observer& observer, const Interactor& interactor,
+                     const RunCondition& continue_running) {
     Field previous_u(columns_, rows_), current_u(columns_, rows_), next_u(columns_, rows_);
     Field previous_v(columns_, rows_), current_v(columns_, rows_), next_v(columns_, rows_);
     current_u(columns_ / 2, rows_ / 2) = configuration_.initial_displacement;
@@ -90,6 +94,9 @@ void Simulation::run(const Observer& observer) {
     const double bv = mu * factor / (configuration_.dx * configuration_.dx);
     const double coupling = (lambda + mu) * factor /
                             (4.0 * configuration_.dx * configuration_.dy);
+    const double damping_half_step = 0.5 * configuration_.damping * configuration_.dt;
+    const double damping_denominator = 1.0 / (1.0 + damping_half_step);
+    const double previous_weight = 1.0 - damping_half_step;
     const double pressure_speed = std::sqrt((lambda + 2.0 * mu) / configuration_.density);
     const double courant = pressure_speed * configuration_.dt *
                            std::sqrt(1.0 / (configuration_.dx * configuration_.dx) +
@@ -99,7 +106,10 @@ void Simulation::run(const Observer& observer) {
     }
 
     if (observer) observer({0, 0.0, current_u, current_v});
-    for (std::size_t step = 1; step <= steps_; ++step) {
+    for (std::size_t step = 1;
+         continue_running ? continue_running() : step <= steps_;
+         ++step) {
+        if (interactor) interactor(current_u, previous_u, current_v, previous_v);
         std::fill(next_u.values().begin(), next_u.values().end(), 0.0);
         std::fill(next_v.values().begin(), next_v.values().end(), 0.0);
 
@@ -115,22 +125,24 @@ void Simulation::run(const Observer& observer) {
             ELASTIC_WAVE_VECTORIZE
             for (std::size_t x = 1; x + 1 < columns_; ++x) {
                 const std::size_t i = row + x;
-                next_u_data[i] =
+                next_u_data[i] = damping_denominator * (
                     au * (current_u_data[i + 1] + current_u_data[i - 1]) +
                     bu * (current_u_data[i + columns_] + current_u_data[i - columns_]) +
                     coupling * (current_v_data[i + columns_ + 1] -
                                 current_v_data[i - columns_ + 1] -
                                 current_v_data[i + columns_ - 1] +
                                 current_v_data[i - columns_ - 1]) +
-                    2.0 * (1.0 - au - bu) * current_u_data[i] - previous_u_data[i];
-                next_v_data[i] =
+                    2.0 * (1.0 - au - bu) * current_u_data[i] -
+                    previous_weight * previous_u_data[i]);
+                next_v_data[i] = damping_denominator * (
                     av * (current_v_data[i + columns_] + current_v_data[i - columns_]) +
                     bv * (current_v_data[i + 1] + current_v_data[i - 1]) +
                     coupling * (current_u_data[i + columns_ + 1] -
                                 current_u_data[i - columns_ + 1] -
                                 current_u_data[i + columns_ - 1] +
                                 current_u_data[i - columns_ - 1]) +
-                    2.0 * (1.0 - av - bv) * current_v_data[i] - previous_v_data[i];
+                    2.0 * (1.0 - av - bv) * current_v_data[i] -
+                    previous_weight * previous_v_data[i]);
             }
         }
         clear_boundaries(next_u);

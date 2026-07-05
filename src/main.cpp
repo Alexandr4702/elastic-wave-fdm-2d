@@ -5,9 +5,10 @@
 #include <exception>
 #include <iostream>
 
-int main() {
+int main(int argc, char** argv) {
     try {
-        elastic_wave::Simulation simulation({});
+        const std::string configuration_path = argc > 1 ? argv[1] : "environment.json";
+        elastic_wave::Simulation simulation(elastic_wave::load_configuration(configuration_path));
         double final_peak = 0.0;
         simulation.run([&](const elastic_wave::StateView& state) {
             if (state.step != simulation.steps()) return;
@@ -25,4 +26,3 @@ int main() {
         return 1;
     }
 }
-
